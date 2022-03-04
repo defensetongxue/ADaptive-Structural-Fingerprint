@@ -5,7 +5,7 @@ import scipy.sparse as sp
 import torch
 import pandas as pd
 import pickle as pkl
-
+import os 
 
 
 
@@ -13,7 +13,11 @@ def dump_data(file_name,data):
     f=open('./interdata/'+file_name,'wb')
     pkl.dump(data,f)
     f.close()
-
+def load_pkl_data(file_name):
+    f=open('./interdata/'+file_name,'rb')
+    data=pkl.load(f)
+    f.close()
+    return data
 
 
 def structural_interaction(ri_index, ri_all, g):
@@ -149,11 +153,10 @@ def structural_interaction(ri_index, ri_all, g):
 
 
 
-def load_data(path="./data/",dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
+def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     """loading data from the data set """
     print('Loading {} dataset...'.format(dataset))
     # get the data from dataset
-    train_val_test=[0.2,0.2,0.6]
     part_sum=train_val_test[0]+train_val_test[1]+train_val_test[2]
     assert part_sum==1,"sum of train,val,test should be one "
     data_content = pd.read_csv('./data/citeseer/citeseer.content',sep='\t',header=None)
@@ -181,21 +184,15 @@ def load_data(path="./data/",dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     # build graph# idx_map is maping the index of city to the consecutive integer
 
     idx_test = range(int(node_number*train_val_test[0]))
-    idx_train = range(int(node_number*train_val_test[0]),int(node_number*train_val_test[1]))
-    idx_val = range(int(node_number*train_val_test[1]), node_number)
-
-
+    idx_train = range(int(node_number*train_val_test[0]),int(node_number*train_val_test[1]+node_number*train_val_test[0]))
+    idx_val = range(int(node_number*train_val_test[1]+node_number*train_val_test[0]), node_number)
     idx_train = torch.LongTensor(idx_train)
     idx_val = torch.LongTensor(idx_val)
     idx_test = torch.LongTensor(idx_test)
-    
     adj = torch.FloatTensor(np.array(adj))
     features = torch.FloatTensor(np.array(features))
     labels = torch.LongTensor(np.where(labels)[1])
 
-    idx_train = torch.LongTensor(idx_train)
-    idx_val = torch.LongTensor(idx_val)
-    idx_test = torch.LongTensor(idx_test)
     print("totally {} nodes, {} edges.".format(node_number,data_edge.shape[0]))
     # caculate n-hop neighbors
     print("finish loading the data, begin to calculate distance matrix")
@@ -203,26 +200,31 @@ def load_data(path="./data/",dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     distance=np.where(distance>0,distance,np.float('inf'))
     distance-=np.eye(distance.shape[0])
     print("calculate distance matrix with floyd algorthm")
-    for k in range(node_number):
-        for i,j in zip(data_edge.iloc[0],data_edge[1]):
-            if(distance[i][j]>distance[i][k]+distance[k][j]):
-                distance[i][j]=distance[i][k]+distance[k][j]
-                    
-    assert distance!=adj,"deepcopy wrong"
-    dump_data('distanceMatrix.pkl',distance)
-    print("finshed calculate distance matrix, begin to calculate ri_index and ri_all")
-    ri_index,ri_all=get_fingerpoint(distance,node_number)
-    dump_data("ri_index.pkl",ri_index)
-    dump_data("ri_all.pkl",ri_all)
-    adj_delta = adj.clone()
+    if not os.path.isfile('interdata/distanceMatrix.pkl'):
+        for k in range(node_number):
+            for i,j in zip(data_edge.iloc[0],data_edge[1]):
+                if(distance[i][j]>distance[i][k]+distance[k][j]):
+                    distance[i][j]=distance[i][k]+distance[k][j]
+                        
+        assert distance!=adj,"deepcopy wrong"
+        dump_data('distanceMatrix.pkl',distance)
+        print("finshed calculate distance matrix, begin to calculate ri_index and ri_all")
+        ri_index,ri_all=get_fingerpoint(distance,node_number)
+        dump_data("ri_index.pkl",ri_index)
+        dump_data("ri_all.pkl",ri_all)
+        adj_delta = adj.clone()
 
-    print("finshed calculate ri_index and ri_all, begin to calculate adj_delta")
-    adj_delta=structural_interaction(ri_index,ri_all,distance)
-    dump_data('adj_delta.pkl',adj_delta)
+        print("finshed calculate ri_index and ri_all, begin to calculate adj_delta")
+        adj_delta=structural_interaction(ri_index,ri_all,distance)
+        dump_data('adj_delta.pkl',adj_delta)
+    else:
+        print("load data from existed file")
+        distance=load_pkl_data('distanceMatrix.pkl')
+        ri_all=load_pkl_data('ri_all.pkl')
+        ri_index=load_pkl_data('ri_index.pkl')
+        adj_delta=load_pkl_data('adj_delta.pkl')
+    
     labels = torch.LongTensor(labels)
-    idx_train = torch.LongTensor(idx_train)
-    idx_val = torch.LongTensor(idx_val)
-    idx_test = torch.LongTensor(idx_test)
     return adj, features,idx_train, idx_val, idx_test, labels,adj_delta
 
 

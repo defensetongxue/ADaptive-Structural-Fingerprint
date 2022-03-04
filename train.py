@@ -41,7 +41,7 @@ if args.cuda:
 
 
 # Load data
-adj, features,  idx_train, idx_val, idx_test,labels ,adj_ad= load_data('./data/citeseer/',"citeseer")
+adj, features,  idx_train, idx_val, idx_test,labels ,adj_ad= load_data('./data/citeseer/')
 features=np.array(features)
 features=scipy.sparse.csr_matrix(features)
 
@@ -58,7 +58,6 @@ model = ADSF(nfeat=features.shape[1],
 optimizer = optim.Adam(model.parameters(), 
                        lr=args.lr, 
                        weight_decay=args.weight_decay)
-###################################使用cuda############################################
 
 features, adj, labels = Variable(features), Variable(adj), Variable(labels)
 
