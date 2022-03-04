@@ -1,0 +1,4 @@
+{
+    "terminal.integrated.defaultProfile.windows": "Anaconda PowerShell",
+    "python.defaultInterpreterPath": "~/anaconda3/envs/ADSF/python"
+}
