@@ -1,6 +1,5 @@
 from __future__ import division
 from __future__ import print_function
-import scipy
 import os
 import glob
 import time
@@ -42,12 +41,6 @@ if args.cuda:
 
 # Load data
 adj, features,  idx_train, idx_val, idx_test,labels ,adj_ad= load_data('./data/citeseer/')
-features=np.array(features)
-features=scipy.sparse.csr_matrix(features)
-
-features=features.astype(np.float32)
-features = torch.FloatTensor(features.todense())
-
 
 model = ADSF(nfeat=features.shape[1],
             nhid=args.hidden, 
