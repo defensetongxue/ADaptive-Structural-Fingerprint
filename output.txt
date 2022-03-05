@@ -1,0 +1,14 @@
+Loading ./data/citeseer/ dataset...
+totally 3312 nodes, 3187 edges.
+finish loading the data, begin to calculate distance matrix
+calculate distance matrix with floyd algorthm
+load data from existed file
+Epoch: 0001 loss_train: 2.2943 acc_train: 0.0982 time: 11.8422s
+loss_test: nan acc_test: 0.0619
+Epoch: 0002 loss_train: nan acc_train: 0.0529 time: 9.9845s
+loss_test: nan acc_test: 0.0619
+Epoch: 0003 loss_train: nan acc_train: 0.0529 time: 9.0375s
+loss_test: nan acc_test: 0.0619
+Epoch: 0004 loss_train: nan acc_train: 0.0529 time: 9.0410s
+loss_test: nan acc_test: 0.0619
+Epoch: 0005 loss_train: nan acc_train: 0.0529 time: 9.3326s

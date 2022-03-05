@@ -41,7 +41,7 @@ if args.cuda:
 
 # Load data
 adj, features,  idx_train, idx_val, idx_test,labels ,adj_ad= load_data('./data/citeseer/')
-
+print(adj_ad)
 model = ADSF(nfeat=features.shape[1],
             nhid=args.hidden, 
             nclass=int(labels.max()) + 1, 
@@ -53,14 +53,14 @@ optimizer = optim.Adam(model.parameters(),
                        weight_decay=args.weight_decay)
 
 features, adj, labels = Variable(features), Variable(adj), Variable(labels)
-
+np.set_printoptions(threshold=np.nan)
 
 def compute_test(epoch):
     model.eval()
     output = model(features, adj,adj_ad)
     loss_test = F.nll_loss(output[idx_test], labels[idx_test])
     acc_test = accuracy(output[idx_test], labels[idx_test])
-    print(
+    print("Test set results:",
           'loss_test: {:.4f}'.format(loss_test.data.item()),
           'acc_test: {:.4f}'.format(acc_test.data.item()))
 
@@ -85,6 +85,8 @@ def train(epoch):
     print('Epoch: {:04d}'.format(epoch+1),
           'loss_train: {:.4f}'.format(loss_train.data.item()),
           'acc_train: {:.4f}'.format(acc_train.data.item()),
+          'loss_val: {:.4f}'.format(loss_val.data.item()),
+          'acc_val: {:.4f}'.format(acc_val.data.item()),
           'time: {:.4f}s'.format(time.time() - t))
     
     return loss_val.data.item()
@@ -108,12 +110,12 @@ for epoch in range(args.epochs):
 
     if bad_counter == args.patience:
         break
-    files = glob.glob('185.pkl')
+    files = glob.glob('*.pkl')
     for file in files:
         epoch_nb = int(file.split('.')[0])
         if epoch_nb < best_epoch:
             os.remove(file)
-files = glob.glob('185.pkl')
+files = glob.glob('*.pkl')
 for file in files:
     epoch_nb = int(file.split('.')[0])
     if epoch_nb > best_epoch:

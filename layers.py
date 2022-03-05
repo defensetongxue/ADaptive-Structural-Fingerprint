@@ -38,8 +38,6 @@ class StructuralFingerprintLayer(nn.Module):
         e=abs(self.W_ei)*e+abs(self.W_si)*s
 
         zero_vec = -9e15*torch.ones_like(e)
-        k_vec=-9e15*torch.ones_like(e)
-        # np.set_printoptions(threshold=np.nan)
         attention = torch.where(adj>0 , e, zero_vec)
         attention = F.softmax(attention, dim=1)
         attention = F.dropout(attention, self.dropout, training=self.training)
