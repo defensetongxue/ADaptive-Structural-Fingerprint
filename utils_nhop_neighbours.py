@@ -4,7 +4,7 @@ import torch
 import pandas as pd
 import pickle as pkl
 import os 
-
+from progress.bar import Bar
 
 
 def dump_data(file_name,data):
@@ -178,13 +178,15 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
             adj[i][j]=adj[j][i]=1
 
     # build graph# idx_map is maping the index of city to the consecutive integer
-
+    
     idx_test = range(int(node_number*train_val_test[0]))
     idx_train = range(int(node_number*train_val_test[0]),int(node_number*train_val_test[1]+node_number*train_val_test[0]))
     idx_val = range(int(node_number*train_val_test[1]+node_number*train_val_test[0]), node_number)
+
     idx_train = torch.LongTensor(idx_train)
     idx_val = torch.LongTensor(idx_val)
     idx_test = torch.LongTensor(idx_test)
+
     adj = torch.FloatTensor(np.array(adj))
     features = torch.FloatTensor(np.array(features))
     labels = torch.LongTensor(np.where(labels)[1])
@@ -192,17 +194,20 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     print("totally {} nodes, {} edges.".format(node_number,data_edge.shape[0]))
     # caculate n-hop neighbors
     print("finish loading the data, begin to calculate distance matrix")
+    
     distance=adj.clone()
     distance=np.where(distance>0,distance,np.float('inf'))
     distance-=np.eye(distance.shape[0])
     print("calculate distance matrix with floyd algorthm")
+    bar = Bar('Processing', max=node_number)
     if not os.path.isfile('interdata/distanceMatrix.pkl') or True:
         for k in range(node_number):
             for i in range(node_number):
                 for j in range(node_number):
                     if distance[i][j]>distance[i][k]+distance[k][j]:
                         distance[i][j]=distance[i][k]+distance[k][j]
-                        
+            bar.next()
+        bar.finish()
         assert distance!=adj,"deepcopy wrong"
         dump_data('distanceMatrix.pkl',distance)
         print("finshed calculate distance matrix, begin to calculate ri_index and ri_all")
@@ -214,6 +219,11 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
         print("finshed calculate ri_index and ri_all, begin to calculate adj_delta")
         adj_delta=structural_interaction(ri_index,ri_all,distance)
         dump_data('adj_delta.pkl',adj_delta)
+        adj=normalize_adj(adj)
+        features=normalize_features(features)
+        adj = torch.FloatTensor(np.array(adj))
+        features = torch.FloatTensor(np.array(features))
+        labels = torch.LongTensor(np.where(labels)[1])
     else:
         print("load data from existed file")
         distance=load_pkl_data('distanceMatrix.pkl')
