@@ -1,4 +1,3 @@
-from distutils.command.config import dump_file
 import numpy as np
 import scipy.sparse as sp
 import torch
@@ -176,9 +175,7 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     node_number=data_content.shape[0]
     adj=np.eye(node_number)
     for i,j in zip(data_edge[0],data_edge[1]):
-        if str(i) in data_map.keys() and str(j) in data_map.keys():
-            x,y=data_map[str(i)],data_map[str(j)]
-            adj[x][y]=adj[y][x]=1
+            adj[i][j]=adj[j][i]=1
 
     # build graph# idx_map is maping the index of city to the consecutive integer
 
@@ -199,11 +196,12 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     distance=np.where(distance>0,distance,np.float('inf'))
     distance-=np.eye(distance.shape[0])
     print("calculate distance matrix with floyd algorthm")
-    if not os.path.isfile('interdata/distanceMatrix.pkl'):
+    if not os.path.isfile('interdata/distanceMatrix.pkl') or True:
         for k in range(node_number):
-            for i,j in zip(data_edge.iloc[0],data_edge[1]):
-                if(distance[i][j]>distance[i][k]+distance[k][j]):
-                    distance[i][j]=distance[i][k]+distance[k][j]
+            for i in range(node_number):
+                for j in range(node_number):
+                    if distance[i][j]>distance[i][k]+distance[k][j]:
+                        distance[i][j]=distance[i][k]+distance[k][j]
                         
         assert distance!=adj,"deepcopy wrong"
         dump_data('distanceMatrix.pkl',distance)
