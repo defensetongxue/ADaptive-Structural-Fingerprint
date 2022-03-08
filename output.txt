@@ -1,7 +1,0 @@
-[[1.e-04    inf    inf ...    inf    inf    inf]
- [1.e-04 0.e+00    inf ...    inf    inf    inf]
- [1.e-04    inf 0.e+00 ...    inf    inf    inf]
- ...
- [1.e-04    inf    inf ... 0.e+00    inf    inf]
- [1.e-04    inf    inf ...    inf 0.e+00    inf]
- [1.e-04    inf    inf ...    inf    inf 0.e+00]]

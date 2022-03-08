@@ -41,7 +41,6 @@ if args.cuda:
 
 # Load data
 adj, features,  idx_train, idx_val, idx_test,labels ,adj_ad= load_data('./data/citeseer/')
-print(adj_ad)
 model = ADSF(nfeat=features.shape[1],
             nhid=args.hidden, 
             nclass=int(labels.max()) + 1, 
@@ -53,7 +52,7 @@ optimizer = optim.Adam(model.parameters(),
                        weight_decay=args.weight_decay)
 
 features, adj, labels = Variable(features), Variable(adj), Variable(labels)
-np.set_printoptions(threshold=np.nan)
+np.set_printoptions(threshold=np.inf)
 
 def compute_test(epoch):
     model.eval()

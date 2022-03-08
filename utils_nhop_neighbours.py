@@ -1,3 +1,4 @@
+from turtle import distance
 import numpy as np
 import scipy.sparse as sp
 import torch
@@ -5,7 +6,7 @@ import pandas as pd
 import pickle as pkl
 import os 
 from progress.bar import Bar
-
+import networkx as nx
 
 def dump_data(file_name,data):
     f=open('./interdata/'+file_name,'wb')
@@ -137,9 +138,9 @@ def structural_interaction(ri_index, ri_all, g):
                 else:
                     for k in range(len(union_rest)):
                         if union_rest[k] in ri_index[i]:
-                            union_ri_alli.append(ri_all[i][ri_index[i].tolist().index(union_rest[k])])
+                            union_ri_alli.append(ri_all[i][ri_index[i].index(union_rest[k])])
                         else:
-                            union_ri_allj.append(ri_all[j][ri_index[j].tolist().index(union_rest[k])])
+                            union_ri_allj.append(ri_all[j][ri_index[j].index(union_rest[k])])
                 k_max = max(intersection_ri_allj, intersection_ri_alli)
                 k_min = min(intersection_ri_allj, intersection_ri_alli)
                 union_ri_allj = k_max + union_ri_allj
@@ -175,7 +176,7 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     node_number=data_content.shape[0]
     adj=np.eye(node_number)
     for i,j in zip(data_edge[0],data_edge[1]):
-            adj[i][j]=adj[j][i]=1
+        adj[i][j]=adj[j][i]=1
 
     # build graph# idx_map is maping the index of city to the consecutive integer
     
@@ -195,48 +196,59 @@ def load_data(dataset="citeseer",train_val_test=[0.2,0.2,0.6]):
     # caculate n-hop neighbors
     print("finish loading the data, begin to calculate distance matrix")
     
-    distance=adj.clone()
-    distance=np.where(distance>0,distance,np.float('inf'))
-    distance-=np.eye(distance.shape[0])
-    print("calculate distance matrix with floyd algorthm")
-    bar = Bar('Processing', max=node_number)
-    if not os.path.isfile('interdata/distanceMatrix.pkl') or True:
-        for k in range(node_number):
-            for i in range(node_number):
-                for j in range(node_number):
-                    if distance[i][j]>distance[i][k]+distance[k][j]:
-                        distance[i][j]=distance[i][k]+distance[k][j]
-            bar.next()
-        bar.finish()
-        assert distance!=adj,"deepcopy wrong"
+    
+    print("calculate distance matrix with dijstrla algorthm, it will cost a really long time")
+    
+    if not os.path.isfile('interdata/distanceMatrix.pkl'):
+        distance=adj.clone()
+        edge=np.where(adj>0)
+        G=nx.DiGraph()
+        for i in range(edge[0].shape[0]):
+            G.add_edge(edge[0][i],edge[1][i],weight=1)
+        for i in range(node_number):
+            for j in range(node_number):
+                try:
+                    rs = nx.astar_path_length ( G,i, j )
+                except nx.NetworkXNoPath:
+                    rs=0
+                distance[i][j]=rs
         dump_data('distanceMatrix.pkl',distance)
         print("finshed calculate distance matrix, begin to calculate ri_index and ri_all")
+    else:
+        print("load distanceMatrix from existed file")    
+        distance=load_pkl_data('distanceMatrix.pkl')
+        print("finished")
+    if not os.path.isfile('interdata/ri_index.pkl') :
         ri_index,ri_all=get_fingerpoint(distance,node_number)
         dump_data("ri_index.pkl",ri_index)
         dump_data("ri_all.pkl",ri_all)
-        adj_delta = adj.clone()
-
-        print("finshed calculate ri_index and ri_all, begin to calculate adj_delta")
-        adj_delta=structural_interaction(ri_index,ri_all,distance)
-        dump_data('adj_delta.pkl',adj_delta)
-        adj=normalize_adj(adj)
-        features=normalize_features(features)
-        adj = torch.FloatTensor(np.array(adj))
-        features = torch.FloatTensor(np.array(features))
-        labels = torch.LongTensor(np.where(labels)[1])
+        print("finished")
     else:
-        print("load data from existed file")
-        distance=load_pkl_data('distanceMatrix.pkl')
+        print("load ri_index/ri_all from existed file") 
         ri_all=load_pkl_data('ri_all.pkl')
         ri_index=load_pkl_data('ri_index.pkl')
+        print("finished")
+    if not os.path.isfile('interdata/adj_delta.pkl') :
+        print("finshed calculate ri_index and ri_all, begin to calculate adj_delta")
+        adj_delta = adj.clone()
+        adj_delta=structural_interaction(ri_index,ri_all,distance)
+        dump_data('adj_delta.pkl',adj_delta)
+    else:
+        print("load adj_delta from existed file")    
         adj_delta=load_pkl_data('adj_delta.pkl')
+        print("finished")
     
+    adj=normalize_adj(adj)
+    features=normalize_features(features)
+    adj = torch.FloatTensor(np.array(adj.todense()))
+    features = torch.FloatTensor(np.array(features))
     labels = torch.LongTensor(labels)
+    print("successfully loading data from {}".format(dataset))
     return adj, features,idx_train, idx_val, idx_test, labels,adj_delta
-
 
 def normalize_adj(mx):
     """Row-normalize sparse matrix"""
+    mx=sp.csr_matrix(mx)
     rowsum = np.array(mx.sum(1))
     r_inv_sqrt = np.power(rowsum, -0.5).flatten()
     r_inv_sqrt[np.isinf(r_inv_sqrt)] = 0.
